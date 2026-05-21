@@ -3,10 +3,14 @@ version: 1
 sprint:
   source: clickup_sprint_folder
   space_id: "90112742868"
-  # Devs criam cards aqui (Demandas de tech/produto) e depois adicionam à
-  # lista da sprint ativa via "add to list". cb consulta esta lista e filtra
-  # localmente para cards cuja locations[] inclui a sprint atual.
-  source_list_id: "901107525454"
+  # Listas onde cards "moram primariamente" antes/depois de serem adicionados
+  # à sprint. cb consulta todas e filtra para cards cuja locations[] (ou
+  # list.id) inclui a sprint atual.
+  #   - 901107525454: Demandas de tech/produto (backlog principal)
+  #   - 901112863015: Épicos (subtasks são as unidades de trabalho)
+  source_list_ids:
+    - "901107525454"
+    - "901112863015"
 
 clickup:
   oauth:
