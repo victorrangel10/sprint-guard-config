@@ -274,3 +274,21 @@ rules:
       target: custom_field
       field: motivo do ajuste
     remediation: "selecione um motivo na lista de opções do card"
+
+  # ===========================================================================
+  # Destino especial: impedido — coleta motivo via prompt e posta como
+  # comentário no card (prefixado com IMPEDIDO:).
+  # ===========================================================================
+
+  - id: motivo-impedido
+    type: required-input
+    severity: error
+    when:
+      to: impedido
+    prompt:
+      kind: text
+      message: "Qual o motivo do impedimento?"
+    write_to:
+      target: comment
+      template: "IMPEDIDO: {value}"
+    remediation: "descreva o motivo do impedimento"
