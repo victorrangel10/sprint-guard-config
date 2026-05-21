@@ -3,16 +3,13 @@ version: 1
 sprint:
   source: clickup_sprint_folder
   space_id: "90112742868"
-  # Listas onde cards "moram primariamente" antes/depois de serem adicionados
-  # à sprint. cb consulta todas e filtra para cards cuja locations[] (ou
-  # list.id) inclui a sprint atual.
-  #   - 901107525454: Demandas de tech/produto (backlog principal)
-  #   - 901112863015: Épicos (subtasks são as unidades de trabalho)
-  source_list_ids:
-    - "901107525454"
-    - "901112863015"
 
 clickup:
+  # ID do workspace/team Inbazz no ClickUp. Usado no endpoint
+  # GET /team/{team_id}/task que retorna cards do usuário em qualquer
+  # list (com subtasks), permitindo filtro local por locations[]
+  # contendo o sprint list id.
+  team_id: "9011655575"
   oauth:
     # TODO: registrar OAuth app no ClickUp e substituir.
     # Não usado em modo dev-token (CB_CLICKUP_TOKEN).
