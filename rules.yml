@@ -1,0 +1,275 @@
+version: 1
+
+sprint:
+  source: clickup_sprint_folder
+  # TODO: substitua pelo space_id real do Tech Inbazz.
+  # Encontrar: ClickUp → Space settings → "Space ID" no canto, ou
+  # via API: https://api.clickup.com/api/v2/team (id do workspace) →
+  # GET /team/{id}/space para listar spaces com seus IDs.
+  space_id: "TBD_REPLACE_WITH_TECH_SPACE_ID"
+
+clickup:
+  oauth:
+    # TODO: registrar OAuth app no ClickUp e substituir.
+    # Não usado em modo dev-token (CB_CLICKUP_TOKEN).
+    client_id: "TBD_REGISTER_OAUTH_APP"
+    redirect_uri: "http://localhost:53212/callback"
+
+# =============================================================================
+# Bypasses — tasks que o cb ignora totalmente (não lista, não valida).
+# =============================================================================
+bypasses:
+  - id: parent-cards
+    when:
+      is_parent: true
+  - id: landing-pages-list
+    when:
+      list_id: "901112054488"
+
+# =============================================================================
+# Rules — avaliadas em paralelo pelo RuleEngine.
+# =============================================================================
+rules:
+
+  # ---------------------------------------------------------------------------
+  # DAG de transições válidas
+  # Fonte: diagrama "Fluxo de Sprint de Tech" + comportamento do n8n
+  # ---------------------------------------------------------------------------
+  - id: dag-sprint
+    type: status-transition
+    severity: error
+    graph:
+      pré-backlog: [backlog]
+      backlog: [planejado]
+      planejado: [em progresso, backlog]
+      em progresso: [revisão, impedido]
+      impedido: [em progresso]
+      revisão: [testes, avaliação, ajustes necessarios]
+      testes: [finalizado, ajustes necessarios]
+      avaliação: [lançado]
+      finalizado: [lançado]
+      ajustes necessarios: [em progresso]
+      lançado: []
+
+  # ---------------------------------------------------------------------------
+  # WIP limit: máx 1 card em "em progresso" por dev
+  # Fonte: label "Máx 1 card por dev" no diagrama
+  # ---------------------------------------------------------------------------
+  - id: wip-em-progresso
+    type: max-wip
+    destination: em progresso
+    count_by:
+      assignee: $current_user
+      status: em progresso
+      scope: sprint_list
+      include_bugs: true
+    max: 1
+    severity: error
+    remediation: "finalize o card atual antes de assumir outro"
+
+  # ===========================================================================
+  # GATE 1 — destinos cumulativos a partir de "planejado"
+  # Aplica a: planejado, em progresso, impedido, revisão, testes, avaliação,
+  # finalizado, lançado. NÃO aplica a: pré-backlog, backlog, ajustes necessarios.
+  # ===========================================================================
+
+  - id: gate-1-due-date
+    type: required-field
+    severity: error
+    when:
+      to: [planejado, em progresso, impedido, revisão, testes, avaliação, finalizado, lançado]
+    field:
+      kind: native
+      name: due_date
+    remediation: "preencha a data de entrega (due date) no card"
+
+  - id: gate-1-points
+    type: required-field
+    severity: error
+    when:
+      to: [planejado, em progresso, impedido, revisão, testes, avaliação, finalizado, lançado]
+    field:
+      kind: native
+      name: points
+    remediation: "preencha os story points"
+
+  - id: gate-1-time-estimate
+    type: required-field
+    severity: error
+    when:
+      to: [planejado, em progresso, impedido, revisão, testes, avaliação, finalizado, lançado]
+    field:
+      kind: native
+      name: time_estimate
+    remediation: "preencha o time estimate"
+
+  - id: gate-1-assignees
+    type: required-field
+    severity: error
+    when:
+      to: [planejado, em progresso, impedido, revisão, testes, avaliação, finalizado, lançado]
+    field:
+      kind: native
+      name: assignees
+    min_length: 1
+    remediation: "atribua um responsável ao card"
+
+  - id: gate-1-priority
+    type: required-field
+    severity: error
+    when:
+      to: [planejado, em progresso, impedido, revisão, testes, avaliação, finalizado, lançado]
+    field:
+      kind: native
+      name: priority
+    remediation: "preencha a prioridade"
+
+  # --- Custom fields opcionais — só validam SE o field existir no card --------
+
+  - id: gate-1-ambiente
+    type: required-field
+    severity: error
+    when:
+      to: [planejado, em progresso, impedido, revisão, testes, avaliação, finalizado, lançado]
+      has_custom_field: ambiente
+    field:
+      kind: custom
+      name: ambiente
+    remediation: "preencha o ambiente"
+
+  - id: gate-1-funcionalidade
+    type: required-field
+    severity: error
+    when:
+      to: [planejado, em progresso, impedido, revisão, testes, avaliação, finalizado, lançado]
+      has_custom_field: funcionalidade
+    field:
+      kind: custom
+      name: funcionalidade
+    remediation: "preencha a funcionalidade"
+
+  - id: gate-1-tipo-entrega
+    type: required-field
+    severity: error
+    when:
+      to: [planejado, em progresso, impedido, revisão, testes, avaliação, finalizado, lançado]
+      has_custom_field: tipo de entrega
+    field:
+      kind: custom
+      name: tipo de entrega
+    remediation: "preencha o tipo de entrega"
+
+  - id: gate-1-entrada-sprint
+    type: required-field
+    severity: error
+    when:
+      to: [planejado, em progresso, impedido, revisão, testes, avaliação, finalizado, lançado]
+      has_custom_field: entrada na sprint
+    field:
+      kind: custom
+      name: entrada na sprint
+    remediation: "preencha a entrada na sprint"
+
+  # --- Bug-only (custom_item_id == 1001) -------------------------------------
+
+  - id: gate-1-bug-gravidade
+    type: required-field
+    severity: error
+    when:
+      to: [planejado, em progresso, impedido, revisão, testes, avaliação, finalizado, lançado]
+      is_bug: true
+    field:
+      kind: custom
+      name: gravidade
+    remediation: "(bug) preencha a gravidade"
+
+  - id: gate-1-bug-data-ocorrencia
+    type: required-field
+    severity: error
+    when:
+      to: [planejado, em progresso, impedido, revisão, testes, avaliação, finalizado, lançado]
+      is_bug: true
+    field:
+      kind: custom
+      name: data da ocorrência
+    remediation: "(bug) preencha a data da ocorrência"
+
+  - id: gate-1-bug-origem
+    type: required-field
+    severity: error
+    when:
+      to: [planejado, em progresso, impedido, revisão, testes, avaliação, finalizado, lançado]
+      is_bug: true
+    field:
+      kind: custom
+      name: origem do bug
+    remediation: "(bug) preencha a origem do bug"
+
+  # ===========================================================================
+  # GATE 2 — destinos a partir de "revisão" (cumula Gate 1)
+  # ===========================================================================
+
+  - id: gate-2-time-spent
+    type: required-field
+    severity: error
+    when:
+      to: [revisão, testes, avaliação, finalizado, lançado]
+    field:
+      kind: native
+      name: time_spent
+    gt: 0
+    remediation: "registre o tempo gasto no card (time tracking)"
+
+  - id: gate-2-revisor
+    type: required-field
+    severity: error
+    when:
+      to: [revisão, testes, avaliação, finalizado, lançado]
+    field:
+      kind: custom
+      name: revisor
+    remediation: "indique o revisor"
+
+  - id: gate-2-bug-causa
+    type: required-field
+    severity: error
+    when:
+      to: [revisão, testes, avaliação, finalizado, lançado]
+      is_bug: true
+    field:
+      kind: custom
+      name: causa do bug
+    remediation: "(bug) preencha a causa do bug"
+
+  # ===========================================================================
+  # GATE 3 — testes, finalizado, lançado (NÃO avaliação). Cumula Gate 2.
+  # ===========================================================================
+
+  - id: gate-3-tester
+    type: required-field
+    severity: error
+    when:
+      to: [testes, finalizado, lançado]
+    field:
+      kind: custom
+      name: tester
+    remediation: "indique o tester"
+
+  # ===========================================================================
+  # Destino especial: ajustes necessarios — não cumula gates anteriores.
+  # Coleta motivo via wizard e grava no custom field.
+  # ===========================================================================
+
+  - id: ajustes-motivo
+    type: required-input
+    severity: error
+    when:
+      to: ajustes necessarios
+    prompt:
+      kind: select
+      message: "Motivo do ajuste?"
+      options_from: custom_field.motivo do ajuste
+    write_to:
+      target: custom_field
+      field: motivo do ajuste
+    remediation: "selecione um motivo na lista de opções do card"
