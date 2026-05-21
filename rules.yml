@@ -2,11 +2,7 @@ version: 1
 
 sprint:
   source: clickup_sprint_folder
-  # TODO: substitua pelo space_id real do Tech Inbazz.
-  # Encontrar: ClickUp → Space settings → "Space ID" no canto, ou
-  # via API: https://api.clickup.com/api/v2/team (id do workspace) →
-  # GET /team/{id}/space para listar spaces com seus IDs.
-  space_id: "TBD_REPLACE_WITH_TECH_SPACE_ID"
+  space_id: "90112742868"
 
 clickup:
   oauth:
